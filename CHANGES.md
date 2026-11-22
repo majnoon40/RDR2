@@ -120,6 +120,31 @@ traffic.
   as the `Terminus-dll` artifact, and attaches it to a GitHub Release when
   pushing a `v*` tag.
 
+### 5c. First CI run failed — Configure step; root cause and fix
+
+The first run (windows-latest ships CMake ≥ 3.31) failed exactly where the
+vulkan pin issue predicted, one layer deeper:
+
+- **Error**: `Build/_deps/vulkan-src/CMakeLists.txt:21 — Compatibility
+  with CMake < 3.5 has been removed from CMake`. The pinned
+  Vulkan-Headers (`sdk-1.1.108.0`, RDR2's 2018-era SDK) declares
+  `cmake_minimum_required(VERSION 3.0.x)`, and modern CMake hard-rejects
+  that instead of warning.
+- **Fix**: `set(CMAKE_POLICY_VERSION_MINIMUM 3.5)` in `cmake/vulkan.cmake`
+  (CMake's officially supported relaxation for old vendored dependencies —
+  also makes **local** builds work with no extra flags), plus
+  `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` on the workflow's Configure step as
+  a belt-and-suspenders.
+
+### 5d. Removed upstream workflows that cannot run here
+
+`.github/workflows/ci.yml`, `nightly.yml`, `pr-comment.yml` came with the
+original uploads and belong to the upstream project's infrastructure:
+`ci.yml` and `nightly.yml` run on **`[self-hosted, Windows]`** runners
+which this repo does not have, so every push left a "CI" check stuck
+queued forever (observed on the first runs). They no longer exist in this
+tree; `build.yml` is the only workflow.
+
 ## Files added / modified
 
 | File | Change |
@@ -130,8 +155,8 @@ traffic.
 | `src/game/hooks/Protections/HandleScriptedGameEvent.cpp` | flood gate, 6 event cases, 7 toggles |
 | `src/game/backend/PlayerData.hpp` | `m_ScriptEventFloodLimit` added |
 | `src/game/frontend/submenus/Settings.cpp` | 7 protection toggles wired |
-| `cmake/vulkan.cmake` | broken tag fixed → `sdk-1.1.108.0` |
-| `.github/workflows/build.yml` | added (CI DLL build) |
+| `cmake/vulkan.cmake` | tag fixed → `sdk-1.1.108.0`; policy-version minimum added |
+| `.github/workflows/build.yml` | added (CI DLL build); Configure passes policy flag |
 
 ## Verification status
 

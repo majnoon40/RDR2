@@ -31,7 +31,12 @@ jobs:
             fetchcontent-${{ runner.os }}-
 
       - name: Configure
-        run: cmake -S . -B Build -A x64
+        # CMAKE_POLICY_VERSION_MINIMUM: the pinned Vulkan-Headers tag
+        # (sdk-1.1.108.0, RDR2's SDK era) declares cmake_minimum_required
+        # below 3.5, which CMake 3.31+ rejects; this is the officially
+        # supported relaxation flag. Also set in cmake/vulkan.cmake so
+        # local builds need no extra flags.
+        run: cmake -S . -B Build -A x64 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Build Release
         run: cmake --build Build --config Release --parallel
