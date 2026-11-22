@@ -95,6 +95,31 @@ traffic.
   **Settings → Protections → Script Events** (after "Block Stable
   Events").
 
+## 5. CI: automatic DLL builds + dependency pin fix
+
+### 5a. Fixed a broken dependency pin (affects local builds too)
+
+- `cmake/vulkan.cmake`: `GIT_TAG sdk-1.1.108` → `sdk-1.1.108.0`. The old
+  tag **does not exist** in KhronosGroup/Vulkan-Headers (their tags carry a
+  build number), so every fresh configure — CI or local — would have died
+  while fetching Vulkan headers. Verified via `git ls-remote`: `sdk-1.1.108.0`
+  exists and is the same commit as `v1.1.108` (matching RDR2's SDK era).
+- All five other pinned deps verified reachable (AsyncLogger, imgui, json
+  v3.11.2, minhook, RDR-Classes commits all resolve upstream).
+
+### 5b. GitHub Actions workflow
+
+- `.github/workflows/build.yml`: builds `Terminus.dll` on every push to
+  `main`, manual `workflow_dispatch`, and `v*` tags.
+- windows-latest (VS2022, satisfies the project's C++23), VS generator:
+  `cmake -S . -B Build -A x64` then `cmake --build Build --config Release`
+  — same commands as BUILD.md.
+- FetchContent deps cached (`Build/_deps`, keyed on `hashFiles('cmake/*.cmake')`)
+  so re-runs skip the clones.
+- Fails loudly if `Build/Release/Terminus.dll` isn't produced, uploads it
+  as the `Terminus-dll` artifact, and attaches it to a GitHub Release when
+  pushing a `v*` tag.
+
 ## Files added / modified
 
 | File | Change |
@@ -105,6 +130,8 @@ traffic.
 | `src/game/hooks/Protections/HandleScriptedGameEvent.cpp` | flood gate, 6 event cases, 7 toggles |
 | `src/game/backend/PlayerData.hpp` | `m_ScriptEventFloodLimit` added |
 | `src/game/frontend/submenus/Settings.cpp` | 7 protection toggles wired |
+| `cmake/vulkan.cmake` | broken tag fixed → `sdk-1.1.108.0` |
+| `.github/workflows/build.yml` | added (CI DLL build) |
 
 ## Verification status
 

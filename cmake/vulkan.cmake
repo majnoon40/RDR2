@@ -4,7 +4,7 @@ message(STATUS "Setting up Vulkan Headers")
 FetchContent_Declare(
     Vulkan
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
-    GIT_TAG sdk-1.1.108 # matches RDR2's SDK
+    GIT_TAG sdk-1.1.108.0 # matches RDR2's SDK
     GIT_PROGRESS TRUE
 )
 

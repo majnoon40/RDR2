@@ -1,0 +1,55 @@
+name: Build Terminus.dll
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (windows-latest, VS2022)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Dependencies are cloned from GitHub by CMake FetchContent at
+      # configure time (pinned in cmake/*.cmake). Cache the _deps tree so
+      # re-runs skip the clones.
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: Build/_deps
+          key: fetchcontent-${{ runner.os }}-${{ hashFiles('cmake/*.cmake') }}
+          restore-keys: |
+            fetchcontent-${{ runner.os }}-
+
+      - name: Configure
+        run: cmake -S . -B Build -A x64
+
+      - name: Build Release
+        run: cmake --build Build --config Release --parallel
+
+      - name: Verify DLL exists
+        run: |
+          if (-not (Test-Path 'Build/Release/Terminus.dll')) { throw 'Terminus.dll was not produced' }
+          Get-Item 'Build/Release/Terminus.dll' | Select-Object Name, Length, LastWriteTime
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Terminus-dll
+          path: Build/Release/Terminus.dll
+          if-no-files-found: error
+
+      - name: Attach to release (v* tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Build/Release/Terminus.dll
