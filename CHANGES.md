@@ -136,7 +136,24 @@ vulkan pin issue predicted, one layer deeper:
   `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` on the workflow's Configure step as
   a belt-and-suspenders.
 
-### 5d. Removed upstream workflows that cannot run here
+### 5e. Second CI run — Configure again; broken `source_group` in RDR-Classes
+
+Run 2 confirmed the 5c fix: configure sailed past Vulkan-Headers, json and
+minhook — and failed one dependency later:
+
+- **Error**: `Build/_deps/rdr-classes-src/CMakeLists.txt:17 (source_group):
+  source_group missing source group name.` The pinned YimMenu/RDR-Classes
+  commit calls `source_group(FILES ...)` — a malformed invocation that
+  CMake 3.29+ rejects as a hard error.
+- **Fix**: shadow the `source_group` builtin with a no-op macro around
+  `FetchContent_MakeAvailable(RDR-Classes)` in `cmake/rdr-classes.cmake`.
+  `source_group` only drives IDE file grouping and never affects compiled
+  output, so the dependency configures unmodified instead of bumping the
+  pin (which risks struct/API drift) or patching fetched code. The only
+  other `source_group` call in this project (imgui.cmake) executes before
+  this file and is unaffected.
+
+### 5f. Removed upstream workflows that cannot run here
 
 `.github/workflows/ci.yml`, `nightly.yml`, `pr-comment.yml` came with the
 original uploads and belong to the upstream project's infrastructure:
